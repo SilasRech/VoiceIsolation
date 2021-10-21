@@ -1,5 +1,5 @@
 from database_helper import data_helper
-from roomacoustics import  room_builder
+from roomacoustics import room_builder
 import echo_canceller.echo_can as ec
 import os
 import numpy as np
@@ -36,7 +36,7 @@ if __name__ == '__main__':
 
     # Init Room for Impulse Responses
     parameters_room = {
-        'rt60': 0.3,
+        'rt60': 0.6,
         'room_dim': [10, 7.5, 3.5],
         'fs': fs,
         'pos_speaker1': [2.5, 4.5, 1.6],
