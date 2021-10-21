@@ -856,14 +856,14 @@ class NLMS:
     def __init__(self, n_bands=32, p=8, mu_max=0):
         self.n_bands = n_bands
         self.filt_len = p
-        self.W = np.zeros((p,self.n_bands), dtype=np.complex128)
-        self.x_mem = np.zeros((p,self.n_bands), dtype=np.complex128)
-        self.D = np.zeros((1,self.n_bands), dtype=np.complex128)
-        self.E = np.zeros((1,self.n_bands), dtype=np.complex128)
+        self.W = np.zeros((p, self.n_bands), dtype=np.complex128)
+        self.x_mem = np.zeros((p, self.n_bands), dtype=np.complex128)
+        self.D = np.zeros((1, self.n_bands), dtype=np.complex128)
+        self.E = np.zeros((1, self.n_bands), dtype=np.complex128)
         self.mu = mu_max
         self.mu_max = mu_max
 
-    def update(self,X_n, D_n):
+    def update(self, X_n, D_n):
         # update buffers
         self.x_mem[1:, :] = self.x_mem[0:-1, :]
         self.x_mem[0, :] = X_n
