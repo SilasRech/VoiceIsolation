@@ -1,11 +1,19 @@
 from database_helper import data_helper
 from roomacoustics import room_builder
+import voice_isolation as vi
 import echo_canceller.echo_can as ec
 import os
 import numpy as np
 import torchaudio
 import torch
 import scipy.io.wavfile as sc
+import pytorch_lightning as pl
+import asteroid
+from asteroid.models import BaseModel
+
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
+from torch.utils.data import DataLoader, random_split
 
 path = os.path.join('C:\\','Users', 'silas', 'Documents','Python Scripts', 'LibriSpeech')
 
@@ -17,6 +25,14 @@ elif os.name == 'posix':
 else:
     print('OS not supported by torchaudio')
     exit()
+
+
+libri_data = torchaudio.datasets.LIBRISPEECH(path, download=False)
+data_loader = torch.utils.data.DataLoader(libri_data,
+                                          batch_size=1,
+                                          shuffle=True)
+
+model = BaseModel.from_pretrained("mpariente/ConvTasNet_WHAM!_sepclean")
 
 if __name__ == '__main__':
 
@@ -51,12 +67,30 @@ if __name__ == '__main__':
     audio_far_end = torch.tensor(room.get_audio_output('FarEnd'))
     audio_near_end = torch.tensor(room.get_audio_output('NearEnd'))
 
+    #audio_near_end = torch.squeeze(audio_near_end)
+    #audio_near_end = torch.unsqueeze(audio_near_end, dim=-1).cpu().detach().numpy()
+    audio_near_end = audio_near_end.float()
+    outwave = model.separate(audio_near_end)
+
+    #test1 = outwave.cpu().detach().numpy()
+    test1 = outwave.cpu().detach().numpy()[0, 0, :]
+    test2 = outwave.cpu().detach().numpy()[0, 1, :]
+
+    sc.write('data/TestSeparation.wav', fs,  test1)
+    sc.write('data/TestSeparation1.wav', fs,  test2)
+
     #Echo Cancellation
     winlen = int(0.04 * fs)
     winstep = int(0.02 * fs)
     nfft = winlen
-
     n_delay_blocks = 16
+
+    #train, val = random_split(libri_data, [28500, 39])
+
+    #autoencoder = vi.LitAutoEncoder()
+    #autoencoder.summarize()
+    #trainer = pl.Trainer()
+    #trainer.fit(autoencoder, DataLoader(train), DataLoader(val))
 
     out_sig = ec.echo_can(torch.reshape(audio_near_end, (-1, 1)), torch.reshape(audio_far_end, (-1, 1)), winlen, winstep, nfft,
                              'FT', n_delay_blocks=n_delay_blocks)

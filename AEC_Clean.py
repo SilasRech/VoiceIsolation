@@ -19,7 +19,7 @@ else:
 def main(signal_nearend, signal_farend, winlen, winstep, nfft, window, n_delay_blocks = 4):
 
     # Signals windowing
-    nfft = int(np.power(2,np.ceil(np.log2(winlen))))
+    nfft = int(np.power(2, np.ceil(np.log2(winlen))))
 
     near_windowed = hf.OA_Windowing(signal_nearend, window = window, winlen = winlen, step = winstep)
     far_windowed = hf.OA_Windowing(signal_farend, window = window, winlen = winlen, step = winstep)
@@ -80,9 +80,9 @@ def main(signal_nearend, signal_farend, winlen, winstep, nfft, window, n_delay_b
             count = 0
 
         #Double talk detection. Using previous error frame in this case (Probably re-checking after filter update works better)
-        Adapt_flag,ctd_result[i] = ctd_aux.detect(new_near_spec.reshape((-1,1)), out_spec)
+        Adapt_flag, ctd_result[i] = ctd_aux.detect(new_near_spec.reshape((-1,1)), out_spec)
         #Update memory for signal filtering (This is done inside the filter update too)
-        far_freq_mem = torch.cat((torch.reshape(new_far_spec,(1,-1)),far_freq_mem[0:-1, :]),dim = 0)
+        far_freq_mem = torch.cat((torch.reshape(new_far_spec, (1, -1)), far_freq_mem[0:-1, :]), dim=0)
 
         #Scale learning rate based on double-talk detector result
         scale_factor = ctd_result[i].item()

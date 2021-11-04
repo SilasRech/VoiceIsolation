@@ -28,7 +28,7 @@ class PyRoomBuilder():
         room = pra.ShoeBox(self.room_dim, fs=self.fs, materials=pra.Material(self.e_absorption),
                                  max_order=self.max_order)
 
-        #room.add_source(self.pos_speaker1, signal=self.audio_speaker1)
+        room.add_source(self.pos_speaker1, signal=self.audio_speaker1)
         room.add_source(self.pos_speaker2, signal=self.audio_speaker2, delay=self.delay)
         return room
 

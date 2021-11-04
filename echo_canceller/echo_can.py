@@ -4,7 +4,7 @@ import HelperFunctions as hf
 import matplotlib.pyplot as plt
 
 
-def echo_can(signal_nearend, signal_farend, winlen, winstep, nfft, window, n_delay_blocks=4):
+def echo_can(signal_nearend, signal_farend, winlen, winstep, nfft, window, n_delay_blocks=8):
 
     # Signals windowing
 
@@ -35,7 +35,6 @@ def echo_can(signal_nearend, signal_farend, winlen, winstep, nfft, window, n_del
     Adapt_flag = True
 
     Syy = torch.zeros((n_frames, 1))
-    Sref = torch.zeros((n_frames, 1))
 
     silences = torch.ones((n_frames, 1))
 
@@ -103,7 +102,6 @@ def echo_can(signal_nearend, signal_farend, winlen, winstep, nfft, window, n_del
             detected = True
         elif (ctd_result_after_update[i] > 0.5 and ctd_result_before_update[i] > 0.4):
             detected = False
-
 
         # Apply actions depending on double talk detection. Let the filter adapt at the beginning of the recording for 2*filter_length regardless of double talk
         if detected and (i >= 2 * n_delay_blocks):

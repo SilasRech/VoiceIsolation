@@ -882,18 +882,18 @@ class NLMS:
         self.W += update
 
     def reset(self):
-        self.W = np.zeros((self.filt_len,self.n_bands), dtype = np.complex64)
+        self.W = np.zeros((self.filt_len, self.n_bands), dtype=np.complex64)
         #self.x_mem = np.zeros((self.filt_len,self.n_bands), dtype = np.complex64)
 
     def update_mem(self, x_mem_new):
-        for i in reversed(range(1,self.filt_len)):
+        for i in reversed(range(1, self.filt_len)):
             self.x_mem[i, :] = self.x_mem[i - 1, :]
         self.x_mem[0, :] = x_mem_new
 
 
 class TwoPathFreq_filter:
 
-    def __init__(self, n_bands=32, p=8, mu_max=0, beta = 0.8, gamma = 0.1, hang_t = 2):
+    def __init__(self, n_bands=32, p=8, mu_max=0, beta=0.8, gamma=0.1, hang_t =2):
         self.R_ey = 0
         self.R_yy = 0
         self.n_bands = n_bands
@@ -995,6 +995,7 @@ class CT_detect:
 
         return self.state, maxval_near/maxval_far
 
+
 class xcorr_CT_detect:
     def __init__(self, num_frames, frame_len, ratio_th = None):
         self.num_frames = num_frames
@@ -1033,8 +1034,9 @@ class xcorr_CT_detect:
 
         return self.state, maxxcorr
 
+
 class ncc_CT_detect:
-    def __init__(self, forg_factor = 0.9, ratio_th = None):
+    def __init__(self, forg_factor=0.9, ratio_th=None):
         self.ratio_th = ratio_th if not (ratio_th == None) else 0.2
         self.forg_factor = forg_factor
 
@@ -1065,10 +1067,10 @@ class ncc_CT_detect:
             self.count += 1
             if self.count > 5:
                 self.decision = True
-            
 
         return self.decision, self.decision_ratio.item()
-    
+
+
 def norm_xcorr(a,b):
     return np.sum(a * b)/(np.sqrt(np.sum(np.square(a)))*np.sqrt(np.sum(np.square(b))) + 1e-12)
 
