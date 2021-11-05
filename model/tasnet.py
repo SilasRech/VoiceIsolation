@@ -1,3 +1,8 @@
+#!/usr/bin/env python -u
+# -*- coding: utf-8 -*-
+
+# Copyright  2018  Northwestern Polytechnical University (author: Ke Wang)
+
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -8,7 +13,7 @@ import sys
 import torch
 import torch.nn as nn
 
-from model.modules import Conv1dBlock, ConvTranspose1d, normalization
+from model.modules import Conv1dBlock, ConvTranspose1d, normalization, ResidualBlock
 
 sys.path.append(os.path.dirname(sys.path[0]) + '/utils')
 from model.show import show_model, show_params, compute_receptive_field
@@ -58,6 +63,7 @@ class TasNet(nn.Module):
                                kernel_size=1)
 
         self.separation = nn.ModuleList()
+        self.feature_extractor = nn.ModuleList()
         for i in range(num_repeat):
             for j in range(num_blocks):
                 dilation = int(2 ** j)
@@ -65,7 +71,8 @@ class TasNet(nn.Module):
                                    convolution_kernel_size, dilation, self.stride,
                                    self.normalization_type, self.causal)
                 self.separation.append(conv)
-
+            res_block = ResidualBlock(bottleneck_channels, bottleneck_channels, stride=1)
+            self.feature_extractor.appen(res_block)
 
         self.conv2 = nn.Conv1d(bottleneck_channels,
                                autoencoder_channels * self.num_speakers,
@@ -154,18 +161,27 @@ class TasNet(nn.Module):
                  }]
         return params
 
-    def forward(self, sample, length):
+    def forward(self, sample, target, length):
         """Forward function.
+
         Args:
             sample: [batch_size, channels, length]
         """
         # print('input:', sample.shape)
         encode = self.encode(sample)
+        encode_target = self.encode(target)
+
         # print('encode:', encode.shape)
+        res1 = self.encode_norm(encode_target)
         conv1 = self.encode_norm(encode)
         conv1 = self.conv1(conv1)
         # print('conv1:', conv1.shape)
         current_layer = conv1
+
+        for i in range(self.num_repeat):
+            for j in range(self.num_blocks):
+                current_layer = conv1d_layer(current_layer)
+
         for conv1d_layer in self.separation:
             current_layer = conv1d_layer(current_layer)
             # print('current_layer:', current_layer.shape)
