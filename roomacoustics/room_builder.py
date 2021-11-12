@@ -11,22 +11,23 @@ class PyRoomBuilder():
 
     """
 
-    def __init__(self, audio_speaker1: None, audio_speaker2, parameter: dict=None):
-        self.rt60 = parameter['rt60']
-        self.room_dim = parameter['room_dim']
-        self.fs = parameter['fs']
-        self.pos_speaker1 = parameter['pos_speaker1']
-        self.pos_speaker2 = parameter['pos_speaker2']
-        self.audio_speaker1 = audio_speaker1
-        self.audio_speaker2 = audio_speaker2
+    def __init__(self, audio_speaker1, audio_speaker2, t60, room_dim, speaker1_pos, speaker2_pos):
+        self.rt60 = t60
+        self.room_dim = room_dim
+        self.fs = 16000
+        self.pos_speaker1 = speaker1_pos
+        self.pos_speaker2 = speaker2_pos
+        self.audio_speaker1 = audio_speaker1/np.max(abs(audio_speaker1)) * 0.3
+        self.audio_speaker2 = audio_speaker2/np.max(abs(audio_speaker2)) * 0.6
 
         self.delay = 0.0
 
-        self.e_absorption, self.max_order = pra.inverse_sabine(self.rt60, self.room_dim)
+        #self.e_absorption, self.max_order = pra.inverse_sabine(self.rt60, self.room_dim)
 
     def build_room(self):
-        room = pra.ShoeBox(self.room_dim, fs=self.fs, materials=pra.Material(self.e_absorption),
-                                 max_order=self.max_order)
+        #room = pra.ShoeBox(self.room_dim, fs=self.fs, materials=pra.Material(self.e_absorption),
+        #                         max_order=self.max_order)
+        room = pra.ShoeBox(self.room_dim, fs=self.fs)
 
         room.add_source(self.pos_speaker1, signal=self.audio_speaker1)
         room.add_source(self.pos_speaker2, signal=self.audio_speaker2, delay=self.delay)
@@ -45,10 +46,10 @@ class PyRoomBuilder():
             self.add_microphone(room, self.pos_speaker2)
 
         room.simulate()
-        room.mic_array.to_wav(
-            "./data/output/Output_For_{}_Speaker.wav".format(speaker),
-            norm=True,
-            bitdepth=np.int16,
-            mono=True,
-        )
+        #room.mic_array.to_wav(
+        #    "./data/output/Output_For_{}_Speaker.wav".format(speaker),
+        #    norm=True,
+        #    bitdepth=np.int16,
+        #    mono=True,
+        #)
         return room.mic_array.signals

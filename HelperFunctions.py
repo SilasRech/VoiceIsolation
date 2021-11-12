@@ -3,13 +3,53 @@ from scipy.signal import lfilter
 import sys
 import torch
 import matplotlib.pyplot as plt
+import tools
+
+
+def make_frames(audio_data, sampling_rate, window_size, hop_size):
+    """
+    Splits an audio signal into subsequent frames.
+
+    :param audio_data: array representing the audio signal.
+    :param sampling_rate: sampling rate in Hz.
+    :param window_size: window size in seconds.
+    :param hop_size: hop size (frame shift) in seconds.
+    :return: n x m array of signal frames, where n is the number of frames and m is the window size in samples.
+    """
+
+    # transform window size in seconds to samples and calculate next higher power of two
+    window_size_samples = tools.sec_to_samples(window_size, sampling_rate)
+    window_size_samples = 2 ** tools.next_pow2(window_size_samples)
+
+    # assign hamming window
+    hamming_window = np.hamming(window_size_samples)
+
+    # transform hop size in seconds to samples
+    hop_size_samples = tools.sec_to_samples(hop_size, sampling_rate)
+
+    # get number of frames from function in tools.py
+    n_frames = tools.get_num_frames(len(audio_data), window_size_samples, hop_size_samples)
+
+    # initialize nxm matrix (n is number of frames, m is window size)
+    # initialize with zeros to avoid zero padding
+    frames = np.zeros([n_frames, window_size_samples], dtype=float)
+
+    # write frames in matrix
+    for i in range(n_frames):
+        start = i * hop_size_samples
+        end = i * hop_size_samples + window_size_samples
+        frames[i, 0:len(audio_data[start:end])] = audio_data[start:end]
+        frames[i, :] = frames[i, :] * hamming_window
+
+    return frames
+
 
 def OA_Windowing(inSig, window, winlen, step):
     """
     Overlap-add windowing
     """
 
-    siglen = inSig.size(0)
+    siglen = inSig.size(1)
     step = int(step)
     winlen = int(winlen)
     if window.upper() == "HAMMING":
@@ -28,22 +68,24 @@ def OA_Windowing(inSig, window, winlen, step):
     else:
         sys.exit("Window not supported")
 
+    w = w.cuda()
     #nWins = int(np.floor((siglen - winlen) / step) + 1)
-    nWins = int(np.floor((siglen - winlen) / step) + 1)
+    nWins = int(np.floor((siglen - winlen) / step)) + 1
 
-    zpSig = torch.nn.functional.pad(inSig, (0, 0, 0, winlen), mode='constant', value=0)
+    zpSig = torch.nn.functional.pad(inSig, (0, 0, 0, winlen), mode='constant', value=0).cuda()
     #zpSig = torch.from_numpy(np.pad(inSig.numpy(), (0, winlen), 'constant', constant_values=(0, 0)))
     winSig = torch.zeros((winlen, nWins))
 
     winIdxini = 0
     winIdxend = winlen
-    zpSig = torch.reshape(zpSig,(-1, 1))
+    zpSig = torch.reshape(zpSig, (-1, 1))
 
     for i in range(0, nWins):
         winSig[:, i] = torch.reshape(torch.multiply(torch.reshape(zpSig[winIdxini:winIdxend],(winlen,)), w),(winlen,))
         winIdxini += step
         winIdxend += step
 
+   # return winSig.reshape(374, 1, 512)
     return winSig
 
 
@@ -51,6 +93,8 @@ def OA_Reconstruct(in_frames, window, winlen, step):
     """
     Overlap-Add reconstruction of the signal.
     """
+
+    in_frames = torch.squeeze(in_frames)
 
     step = int(step)
     winlen = int(winlen)
@@ -61,7 +105,7 @@ def OA_Reconstruct(in_frames, window, winlen, step):
 
     output_len = int((step * num_f) + winlen)
 
-    out_sig = torch.zeros((output_len,))
+    out_sig = torch.zeros((output_len,)).cuda()
 
     # Generate window function
 
@@ -78,6 +122,7 @@ def OA_Reconstruct(in_frames, window, winlen, step):
     else:
         sys.exit("Window not supported")
 
+    w = w.cuda()
     ini_frame = 0
     end_frame = winlen
 

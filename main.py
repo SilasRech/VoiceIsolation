@@ -1,6 +1,4 @@
 from database_helper import data_helper
-from roomacoustics import room_builder
-import voice_isolation as vi
 import echo_canceller.echo_can as ec
 import os
 import numpy as np
@@ -9,94 +7,120 @@ import torch
 import scipy.io.wavfile as sc
 import pytorch_lightning as pl
 import asteroid
-from asteroid.models import BaseModel
+import Data.DatabaseBuilder
+import voice_isolation as vi
+from solver import Solver
+from HelperFunctions import make_frames
+from torch.utils.data import DataLoader
+from Data.DatabaseBuilder import test_audio
+from HelperFunctions import OA_Windowing, OA_Reconstruct
+
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 from torch.utils.data import DataLoader, random_split
 
-path = os.path.join('C:\\','Users', 'silas', 'Documents','Python Scripts', 'LibriSpeech')
+path = os.path.join('C:\\','Users', 'silas', 'Documents', 'Python Scripts', 'LibriSpeech')
 
-#Define audio backend to enable use of torchaudio
-if os.name == 'nt':
-    torchaudio.set_audio_backend('soundfile')
-elif os.name == 'posix':
-    torchaudio.set_audio_backend('sox_io')
-else:
-    print('OS not supported by torchaudio')
-    exit()
+#model = BaseModel.from_pretrained("mpariente/ConvTasNet_WHAM!_sepclean")
 
-
-libri_data = torchaudio.datasets.LIBRISPEECH(path, download=False)
-data_loader = torch.utils.data.DataLoader(libri_data,
-                                          batch_size=1,
-                                          shuffle=True)
-
-model = BaseModel.from_pretrained("mpariente/ConvTasNet_WHAM!_sepclean")
 
 if __name__ == '__main__':
 
-    # Default for Development = False to have static audiofiles
-    load_random_speaker = False
-
     parameters = {
-        'speaker_distr' : {'Speaker1': 'M', 'Speaker2': 'M'},
+        'speaker_distr': {'Speaker1': 'M', 'Speaker2': 'M'},
     }
 
-    # Load audiofiles for testing
+    load_random_speaker = False
     if load_random_speaker:
         dataset = data_helper.LibriData(parameters['speaker_distr'], path)
         audio_speaker1, audio_speaker2, fs = dataset.load_random_speaker_files()
     else:
         audio_speaker1, audio_speaker2, fs = data_helper.loader()
 
-    # Init Room for Impulse Responses
-    parameters_room = {
-        'rt60': 0.6,
-        'room_dim': [10, 7.5, 3.5],
-        'fs': fs,
-        'pos_speaker1': [2.5, 4.5, 1.6],
-        'pos_speaker2': [1.5, 2, 1.6],
+    complete_scenario, clean = test_audio(audio_speaker1, audio_speaker2)
+
+    #test_mixture = torch.from_numpy(complete_scenario).float().cuda()
+    #test_mixture = torch.unsqueeze(test_mixture, 1)
+
+    #test_clean = torch.from_numpy(clean).float().cuda()
+    #test_clean = torch.unsqueeze(test_clean, 1)
+
+    path = 'C:/Users/silas/NoisyOverlappingSpeakers/Database/'
+
+    dataset = Data.DatabaseBuilder.NoisyOverlappingSpeakerSet('C:/Users/silas/NoisyOverlappingSpeakers/Database/')
+    dataset_eval = Data.DatabaseBuilder.NoisyOverlappingSpeakerSet('C:/Users/silas/NoisyOverlappingSpeakers/EvalDatabase/')
+
+    train_dataloader = DataLoader(dataset, batch_size=374, shuffle=False)
+    eval_dataloader = DataLoader(dataset_eval, batch_size=374, shuffle=False)
+
+    data = {'tr_loader': train_dataloader, 'eval_loader': eval_dataloader}
+
+    # Load audiofiles for testing
+    parameters = {
+        'speaker_distr': {'Speaker1': 'M', 'Speaker2': 'M'},
     }
 
-    audio_speaker1 = np.squeeze(audio_speaker1.detach().cpu().numpy())
-    audio_speaker2 = np.squeeze(audio_speaker2.detach().cpu().numpy())
+    M = 2  # BatchSize
 
-    room = room_builder.PyRoomBuilder(audio_speaker1, audio_speaker2, parameters_room)
+    N = 512  # enc_dim / dec_dim
 
-    audio_far_end = torch.tensor(room.get_audio_output('FarEnd'))
-    audio_near_end = torch.tensor(room.get_audio_output('NearEnd'))
+    L = int(16000 * 0.032)  # filter size # kernel size
 
-    #audio_near_end = torch.squeeze(audio_near_end)
-    #audio_near_end = torch.unsqueeze(audio_near_end, dim=-1).cpu().detach().numpy()
-    audio_near_end = audio_near_end.float()
-    outwave = model.separate(audio_near_end)
+    T = 512  # Samples
 
-    #test1 = outwave.cpu().detach().numpy()
-    test1 = outwave.cpu().detach().numpy()[0, 0, :]
-    test2 = outwave.cpu().detach().numpy()[0, 1, :]
+    K = 2 * T // L - 1
 
-    sc.write('data/TestSeparation.wav', fs,  test1)
-    sc.write('data/TestSeparation1.wav', fs,  test2)
+    B = 128  # Input Channels for ConvLayer
+    H, P, X, R, C, norm_type, causal = 3, 3, 3, 2, 1, "gLN", False
 
-    #Echo Cancellation
-    winlen = int(0.04 * fs)
-    winstep = int(0.02 * fs)
-    nfft = winlen
-    n_delay_blocks = 16
+    print(f'There are {len(dataset)} samples in the dataset')
+    # Default for Development = False to have static audiofiles
 
-    #train, val = random_split(libri_data, [28500, 39])
+    load_random_speaker = False
+    if load_random_speaker:
+        dataset = data_helper.LibriData(parameters['speaker_distr'], path)
+        audio_speaker1, audio_speaker2, fs = dataset.load_random_speaker_files()
+    else:
+        audio_speaker1, audio_speaker2, fs = data_helper.loader()
 
-    #autoencoder = vi.LitAutoEncoder()
-    #autoencoder.summarize()
-    #trainer = pl.Trainer()
-    #trainer.fit(autoencoder, DataLoader(train), DataLoader(val))
+    # model
+    model = vi.ConvTasNet(N, L, B, H, P, X, R,
+                       C, norm_type=norm_type, causal=causal)
+    #print(model)
 
-    out_sig = ec.echo_can(torch.reshape(audio_near_end, (-1, 1)), torch.reshape(audio_far_end, (-1, 1)), winlen, winstep, nfft,
-                             'FT', n_delay_blocks=n_delay_blocks)
+    optimizier = torch.optim.Adam(model.parameters(),
+                                      lr=1e-3,
+                                      weight_decay=1e-3)
 
-    # torchaudio.save(filepath = os.path.normpath('./Samples/EchoSample.wav'),src = out_sig, sample_rate = fs_target, format = "wav")
-    sc.write(os.path.normpath('./data/output/EchoSample2.wav'), fs, out_sig.numpy())
+    # solver
+    solver = Solver(data, model, optimizier, epochs=1)
+    solver.train()
+
+    print('Training Complete - Start Masking Audio')
+    trans_complete = complete_scenario.permute(2, 1, 0).cuda()
+    trans_clean = clean.permute(2, 1, 0).cuda()
+
+    #Predict Model
+    test_out = model(trans_complete, trans_clean).float().cuda()
+
+    test_out = test_out.permute(0, 1, 2).cuda()
+    test_out = OA_Reconstruct(torch.squeeze(test_out), 'HAMMING', 16000*0.032, 16000*0.016)
+
+    test_clean = trans_clean.permute(0, 1, 2).cuda()
+    test_clean = OA_Reconstruct(torch.squeeze(test_clean), 'HAMMING', 16000*0.032, 16000*0.016)
+
+    #complete_scenario = complete_scenario.permute(0, 1, 2).cuda()
+    complete_scenario = OA_Reconstruct(torch.squeeze(trans_complete), 'HAMMING', 16000*0.032, 16000*0.016)
+
+    test_out = test_out.cpu().detach().numpy()
+    test_clean = torch.squeeze(test_clean)
+    test_clean = test_clean.cpu().detach().numpy()
+    complete_scenario = complete_scenario.cpu().detach().numpy()
+
+    sc.write('data/TestSeparation.wav', fs,  test_out)
+    sc.write('data/TestSeparation_clean.wav', fs,  test_clean)
+    sc.write('data/TestSeparation_CompleteScenario.wav', fs, complete_scenario)
 
     test = 1
 
