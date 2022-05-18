@@ -1,0 +1,1 @@
+/home/rechs1/.conda/envs/vi
