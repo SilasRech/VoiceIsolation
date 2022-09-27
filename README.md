@@ -23,9 +23,27 @@ The network consists of two parts, one masking network, where a mask is generate
 
 <img src="https://www.dropbox.com/s/odr5wa3lvs6c9zi/InverseMasking-1.png?raw=1" width="430px" height="430px">
 
-Listening Example 
+Listening Example 1
 
 [Listening Example for original speech mixture](https://www.dropbox.com/s/ovimudiwwi7i9zf/TestSeparation_CompleteScenario126.wav?dl=0)
 
 
 [Listening Example for isolated speaker](https://www.dropbox.com/s/mrqoabirx2hqs71/TestSeparation126.wav?dl=0)
+
+
+Listening Example 2
+
+[Listening Example for original speech mixture](https://www.dropbox.com/s/t7ts8w0zei1srnv/TestSeparation_CompleteScenario0.wav?dl=0)
+
+
+[Listening Example for isolated speaker](https://www.dropbox.com/s/nrihdfgsig6446p/TestSeparation0.wav?dl=0)
+
+
+Listening Example 3
+
+[Listening Example for original speech mixture](https://www.dropbox.com/s/66r77d0tfnf4cqc/TestSeparation_CompleteScenario4.wav?dl=0)
+
+
+[Listening Example for isolated speaker](https://www.dropbox.com/s/e5v5eun9w928mg8/TestSeparation4.wav?dl=0)
+
+
