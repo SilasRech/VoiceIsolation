@@ -11,7 +11,7 @@ Problem Scenario: There can be multiple speakers in one room which are speaking 
     
 -   PESQ score of **3.7** after attenuation
     
--   Listening tests confirm that the subjective speech quality is doubled (**MUSHRA score 67**)
+-   Listening tests confirm that the subjective speech quality is doubled (**MUSHRA score 75**)
     
 -   No prior information is needed to identify the targeted speaker
     
