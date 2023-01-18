@@ -1,0 +1,1 @@
+python metafiles.py --datapath /scratch/work/rechs1/LibriSpeech/dev-clean/
